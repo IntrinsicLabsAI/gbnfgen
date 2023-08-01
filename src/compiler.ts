@@ -9,13 +9,16 @@ import {
   literal,
   reference,
   sequence,
-  serializeGrammar,
 } from "./grammar.js";
 import { ElementIdentifier } from "./grammarTest.js";
 
 function toElementId(ifaceName: string): ElementIdentifier {
   const pattern = /[^a-zA-Z0-9]/g;
   return ifaceName.replace(pattern, "");
+}
+
+function toListElementId(ifaceName: string): ElementIdentifier {
+  return `${toElementId(ifaceName)}list`;
 }
 
 const WS_ELEM: GrammarElement = {
@@ -95,7 +98,11 @@ export function toGrammar(iface: Interface): Grammar {
         typeRef = NUMBERLIST_REF;
         break;
       default:
-        typeRef = reference(toElementId(type.reference));
+        if (type.isArray) {
+          typeRef = reference(toListElementId(type.reference));
+        } else {
+          typeRef = reference(toElementId(type.reference));
+        }
         break;
     }
     return [WS_REF, literal(`"${name}":`), WS_REF, typeRef];
@@ -113,10 +120,28 @@ export function toGrammar(iface: Interface): Grammar {
     identifier: toElementId(iface.name),
     alternatives: [ifaceRule],
   };
-  // console.dir(ifaceElem.alternatives[0]);
+
+  const ifaceListElem: GrammarElement = {
+    identifier: toElementId(iface.name) + "list",
+    alternatives: [
+      // Empty list
+      literal(`[]`),
+      // Non-empty list
+      sequence(
+        literal(`[`),
+        WS_REF,
+        reference(ifaceElem.identifier),
+        group(
+          sequence(literal(`,`), WS_REF, reference(ifaceElem.identifier)),
+          "star"
+        ),
+        literal(`[`)
+      ),
+    ],
+  };
 
   return {
-    elements: [ifaceElem],
+    elements: [ifaceElem, ifaceListElem],
   };
 }
 
@@ -126,7 +151,7 @@ export type PropertyType =
   | "number"
   | "Array<string>"
   | "Array<number>"
-  | { reference: string };
+  | { reference: string; isArray: boolean };
 
 export interface InterfaceProperty {
   name: string;
@@ -141,7 +166,7 @@ interface InMemoryCompilerHost extends ts.CompilerHost {
   addSource(fileName: string, code: string): ts.SourceFile;
 }
 
-function baseGrammar(): Grammar {
+export function baseGrammar(): Grammar {
   return {
     elements: [
       STRING_ELEM,
@@ -192,6 +217,12 @@ function handleInterface(
   declaredTypes: Set<string>,
   typeChecker: ts.TypeChecker
 ): Interface {
+  // Support array versions of each of the required types as well.
+  const declaredArrayTypes: Map<string, string> = new Map();
+  for (const declType of declaredTypes) {
+    declaredArrayTypes.set(`${declType}[]`, declType);
+  }
+
   if (iface.typeParameters) {
     throw new Error(
       `${iface.name.getText(srcFile)}: interfaces cannot have type parameters`
@@ -221,7 +252,10 @@ function handleInterface(
       // console.log(`TYPE: ${type}`);
       propTypeValidated = "Array<number>";
     } else if (declaredTypes.has(propType)) {
-      propTypeValidated = { reference: propType };
+      propTypeValidated = { reference: propType, isArray: false };
+    } else if (declaredArrayTypes.has(propType)) {
+      const baseType = declaredArrayTypes.get(propType)!;
+      propTypeValidated = { reference: baseType, isArray: true };
     } else {
       throw new Error(
         `Failed validating parameter ${propName}: unsupported type ${propType}`
@@ -283,7 +317,9 @@ export function compile(source: string, rootType: string): Grammar {
     );
   }
 
-  const grammar = baseGrammar();
+  const grammar: Grammar = {
+    elements: [...baseGrammar().elements],
+  };
 
   srcFile.forEachChild((child) => {
     if (ts.isInterfaceDeclaration(child)) {

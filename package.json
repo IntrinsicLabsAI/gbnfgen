@@ -1,5 +1,5 @@
 {
-  "name": "llama.ts",
+  "name": "@intrinsic-labs/gbnfgen",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -12,6 +12,7 @@
   "license": "ISC",
   "devDependencies": {
     "ts-node": "^10.9.1",
-    "typescript": "^5.1.6"
+    "typescript": "^5.1.6",
+    "vitest": "^0.34.0"
   }
 }
