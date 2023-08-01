@@ -1,28 +1,16 @@
 import {
   Grammar,
   GrammarElement,
-  GrammarRule,
-  RuleCharRange,
-  RuleLiteral,
   RuleReference,
-  RuleSequence,
+  charPattern,
+  literal,
+  sequence,
   serializeGrammar,
 } from "./grammar.js";
+import { Interface, InterfaceProperty, PropertyType } from "./compiler.js";
 
 // Create a new grammar type that can be used to extract shit from this other shit
 
-// Parameterized list of things
-type PropertyType = "string" | "number" | "Array<string>" | "Array<number>";
-
-interface InterfaceProperty {
-  name: string;
-  type: PropertyType;
-}
-
-interface Interface {
-  name: string;
-  properties: Array<InterfaceProperty>;
-}
 
 // Grammar rules are either patterns, or sequences of strings.
 // If we have a char range then that would indicate the set of valid formats we can use here...etc.
@@ -41,39 +29,19 @@ const iface: Interface = {
   ],
 };
 
-function literal(value: string): RuleLiteral {
-  return {
-    type: "literal",
-    literal: value,
-  };
-}
-
-function charPattern(value: string): RuleCharRange {
-  return {
-    type: "char-range",
-    range: value,
-  };
-}
-
-function sequence(...values: Array<GrammarRule>): RuleSequence {
-  return {
-    type: "sequence",
-    rules: values,
-  };
-}
 
 export function toGrammar(iface: Interface): Grammar {
   const ws: GrammarElement = {
     identifier: "ws",
-    rules: [charPattern(`([ \\t\\n] ws)?`)],
+    alternatives: [charPattern(/[ \t\n]*/g)],
   };
 
   const stringElem: GrammarElement = {
     identifier: "string",
-    rules: [
+    alternatives: [
       sequence(
         literal(`"`),
-        charPattern(`([^"]*)`),
+        charPattern(/([^"]*)/g),
         literal(`"`)
       ),
     ],
@@ -88,9 +56,10 @@ export function toGrammar(iface: Interface): Grammar {
     type: "reference",
     referee: "ws",
   };
+
   const root: GrammarElement = {
     identifier: "root",
-    rules: [
+    alternatives: [
       sequence(
         literal("{"),
         wsRef,

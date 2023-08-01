@@ -4,12 +4,8 @@ export interface Grammar {
 
 export interface GrammarElement {
   identifier: string;
-  rules: Array<GrammarRule>;
+  alternatives: Array<GrammarRule>;
 }
-
-// Serialize a RuleGroup
-// RuleSequence => A list of rules that must all be executed one after the other
-// RuleOptional => an optional element for the rule
 
 export type GrammarRule =
   | RuleSequence
@@ -41,8 +37,20 @@ export interface RuleReference {
 
 export interface RuleCharRange {
   type: "char-range";
-  range: string;
+  pattern: RegExp;
 }
+
+// TODO(aduffy): Finish constrained char range DSL
+// export enum CharRange {
+//   SPACE = "space",
+//   TAB = "tab",
+//   NEWLINE = "newline",
+//   ALPHA_LOWER = "alpha-lower",
+//   ALPHA_UPPER = "alpha-upper",
+//   DIGITS = "digits",
+//   HEX_LETTERS = "hex-letters",
+//   NOT_QUOTE = "not-quote",
+// }
 
 export function isSequence(rule: GrammarRule): rule is RuleSequence {
   return rule.type === "sequence";
@@ -64,7 +72,7 @@ export function isCharRange(rule: GrammarRule): rule is RuleCharRange {
   return rule.type === "char-range";
 }
 
-export function serializeRule(rule: GrammarRule): string {
+function serializeRule(rule: GrammarRule): string {
   if (isSequence(rule)) {
     return serializeSequence(rule);
   } else if (isGroup(rule)) {
@@ -79,24 +87,24 @@ export function serializeRule(rule: GrammarRule): string {
   throw new Error(`Unknown rule ${rule}`);
 }
 
-export function serializeSequence(rule: RuleSequence): string {
-  return rule.rules.map(serializeRule).join("\n    ");
+function serializeSequence(rule: RuleSequence): string {
+  return rule.rules.map(serializeRule).join("   ");
 }
 
-export function serializeGroup(rule: RuleGroup): string {
+function serializeGroup(rule: RuleGroup): string {
   return `(${serializeSequence(rule.rules)})${rule.optional && "?"}`;
 }
 
-export function serializeLiteralRule(rule: RuleLiteral): string {
+function serializeLiteralRule(rule: RuleLiteral): string {
   return JSON.stringify(rule.literal);
 }
 
-export function serializeReference(rule: RuleReference): string {
+function serializeReference(rule: RuleReference): string {
   return rule.referee;
 }
 
-export function serializeCharRange(rule: RuleCharRange): string {
-  return rule.range;
+function serializeCharRange(rule: RuleCharRange): string {
+    return rule.pattern.source;
 }
 
 export function serializeElement(
@@ -109,7 +117,7 @@ export function serializeElement(
     );
   }
   const invalidReferences = new Set(
-    grammarElement.rules
+    grammarElement.alternatives
       .filter(isReference)
       .map((referenceRule) => referenceRule.referee)
       .filter((ref) => !declaredTypes.has(ref))
@@ -117,7 +125,7 @@ export function serializeElement(
   if (invalidReferences.size > 0) {
     throw new Error(`Invalid references in ruleset: ${invalidReferences}`);
   }
-  const rules = grammarElement.rules.map(serializeRule).join(`\n| `);
+  const rules = grammarElement.alternatives.map(serializeRule).join(`\n| `);
   return `${grammarElement.identifier} ::= ${rules}`;
 }
 
@@ -131,4 +139,25 @@ export function serializeGrammar(grammar: Grammar): string {
     out += "\n";
   });
   return out;
+}
+
+export function literal(value: string): RuleLiteral {
+  return {
+    type: "literal",
+    literal: value,
+  };
+}
+
+export function charPattern(pattern: RegExp): RuleCharRange {
+  return {
+    type: "char-range",
+    pattern,
+  };
+}
+
+export function sequence(...values: Array<GrammarRule>): RuleSequence {
+  return {
+    type: "sequence",
+    rules: values,
+  };
 }
