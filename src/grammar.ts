@@ -22,7 +22,7 @@ export interface RuleSequence {
 export interface RuleGroup {
   type: "group";
   rules: RuleSequence;
-  optional: boolean;
+  multiplicity: "none" | "optional" | "star" | "plus";
 }
 
 export interface RuleLiteral {
@@ -39,18 +39,6 @@ export interface RuleCharRange {
   type: "char-range";
   pattern: RegExp;
 }
-
-// TODO(aduffy): Finish constrained char range DSL
-// export enum CharRange {
-//   SPACE = "space",
-//   TAB = "tab",
-//   NEWLINE = "newline",
-//   ALPHA_LOWER = "alpha-lower",
-//   ALPHA_UPPER = "alpha-upper",
-//   DIGITS = "digits",
-//   HEX_LETTERS = "hex-letters",
-//   NOT_QUOTE = "not-quote",
-// }
 
 export function isSequence(rule: GrammarRule): rule is RuleSequence {
   return rule.type === "sequence";
@@ -92,7 +80,13 @@ function serializeSequence(rule: RuleSequence): string {
 }
 
 function serializeGroup(rule: RuleGroup): string {
-  return `(${serializeSequence(rule.rules)})${rule.optional && "?"}`;
+  const multiplicity = {
+    "none": "",
+    "optional": "?",
+    "star": "*",
+    "plus": "+",
+  }[rule.multiplicity];
+  return `(${serializeSequence(rule.rules)})${multiplicity}`;
 }
 
 function serializeLiteralRule(rule: RuleLiteral): string {
@@ -104,7 +98,7 @@ function serializeReference(rule: RuleReference): string {
 }
 
 function serializeCharRange(rule: RuleCharRange): string {
-    return rule.pattern.source;
+  return rule.pattern.source;
 }
 
 export function serializeElement(
@@ -125,7 +119,7 @@ export function serializeElement(
   if (invalidReferences.size > 0) {
     throw new Error(`Invalid references in ruleset: ${invalidReferences}`);
   }
-  const rules = grammarElement.alternatives.map(serializeRule).join(`\n| `);
+  const rules = grammarElement.alternatives.map(serializeRule).join(` | `);
   return `${grammarElement.identifier} ::= ${rules}`;
 }
 
@@ -160,4 +154,19 @@ export function sequence(...values: Array<GrammarRule>): RuleSequence {
     type: "sequence",
     rules: values,
   };
+}
+
+export function reference(value: string): RuleReference {
+  return {
+    type: "reference",
+    referee: value,
+  };
+}
+
+export function group(rules: RuleSequence, multiplicity: RuleGroup["multiplicity"]): RuleGroup {
+  return {
+    type: "group",
+    rules,
+    multiplicity,
+  }
 }
