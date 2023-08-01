@@ -1,8 +1,9 @@
 {
   "name": "@intrinsicai/gbnfgen",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "",
-  "main": "index.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
     "exec": "tsc && node ./dist/grammarTest.js",
     "test": "echo \"Error: no test specified\" && exit 1"
