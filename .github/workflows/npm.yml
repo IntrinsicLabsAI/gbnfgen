@@ -1,12 +1,13 @@
 name: Publish Package to npmjs
 on:
   push:
-    tags: '*'
+    branches: [main]
 jobs:
   "npm-publish":
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - run: git pull --tags
       # Setup .npmrc file to publish to npm
       - uses: actions/setup-node@v3
         with:
@@ -14,6 +15,7 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
       - run: npm ci
       - run: npx tsc
+      - run: npm --no-git-tag-version version from-git
       - run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
