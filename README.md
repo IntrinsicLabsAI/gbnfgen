@@ -4,7 +4,7 @@
 
 # GGML BNF Grammar Generator
 
-> _Generate llama.cpp compatible gramamr files to guarantee valid JSON outputs from LLMs_
+> _Generate llama.cpp compatible grammar files to guarantee valid JSON outputs from LLMs_
 
 Check out the [Live Demo](https://grammar.intrinsiclabs.ai/).
 
