@@ -1,6 +1,6 @@
 {
   "name": "@intrinsicai/gbnfgen",
-  "version": "0.2.0",
+  "version": "0.0.0",
   "description": "",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
