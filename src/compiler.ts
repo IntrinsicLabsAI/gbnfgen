@@ -10,7 +10,8 @@ import {
   reference,
   sequence,
 } from "./grammar.js";
-import { ElementIdentifier } from "./grammarTest.js";
+
+type ElementIdentifier = string;
 
 function toElementId(ifaceName: string): ElementIdentifier {
   const pattern = /[^a-zA-Z0-9]/g;
@@ -30,6 +31,13 @@ const STRING_ELEM: GrammarElement = {
   identifier: "string",
   alternatives: [sequence(literal(`"`), charPattern(/([^"]*)/g), literal(`"`))],
 };
+const BOOLEAN_ELEM: GrammarElement = {
+  identifier: "boolean",
+  alternatives: [
+    literal(`true`),
+    literal(`false`),
+  ]
+}
 const NUMBER_ELEM: GrammarElement = {
   identifier: "number",
   alternatives: [
@@ -41,6 +49,7 @@ const NUMBER_ELEM: GrammarElement = {
   ],
 };
 const STRING_REF = reference(STRING_ELEM.identifier);
+const BOOLEAN_REF = reference(BOOLEAN_ELEM.identifier);
 const NUMBER_REF = reference(NUMBER_ELEM.identifier);
 const WS_REF: RuleReference = reference(WS_ELEM.identifier);
 const NUMBERLIST_ELEM: GrammarElement = {
@@ -90,6 +99,9 @@ export function toGrammar(iface: Interface): Grammar {
         break;
       case "number":
         typeRef = NUMBER_REF;
+        break;
+      case "boolean":
+        typeRef = BOOLEAN_REF;
         break;
       case "Array<string>":
         typeRef = STRINGLIST_REF;
@@ -149,6 +161,7 @@ export function toGrammar(iface: Interface): Grammar {
 export type PropertyType =
   | "string"
   | "number"
+  | "boolean"
   | "Array<string>"
   | "Array<number>"
   | { reference: string; isArray: boolean };
@@ -170,6 +183,7 @@ export function baseGrammar(): Grammar {
   return {
     elements: [
       STRING_ELEM,
+      BOOLEAN_ELEM,
       WS_ELEM,
       NUMBER_ELEM,
       STRINGLIST_ELEM,
@@ -245,6 +259,8 @@ function handleInterface(
       propTypeValidated = "string";
     } else if (propType === "number") {
       propTypeValidated = "number";
+    } else if (propType === "boolean") {
+      propTypeValidated = "boolean";
     } else if (propType === "Array<string>" || propType === "string[]") {
       propTypeValidated = "Array<string>";
     } else if (propType === "Array<number>" || propType === "number[]") {
