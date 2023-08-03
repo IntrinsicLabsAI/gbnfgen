@@ -54,6 +54,7 @@ Currently the library is narrowly focused, we only provide support for the follo
 
 * `string` and `string[]`
 * `number` and `number[]`
+* `boolean`
 * Interface types and single-dimensional arrays of interface types. These must be interface types that you define within a single call to `compile`
 
 
