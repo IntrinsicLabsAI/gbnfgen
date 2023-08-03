@@ -147,7 +147,7 @@ export function toGrammar(iface: Interface): Grammar {
           sequence(literal(`,`), WS_REF, reference(ifaceElem.identifier)),
           "star"
         ),
-        literal(`[`)
+        literal(`]`)
       ),
     ],
   };
