@@ -10,7 +10,14 @@ import {
   sequence,
 } from "./grammar.js";
 
-import { toElementId, toListElementId, WS_REF, getGrammarRegister, GrammarRegister, registerToGrammar } from "./util.js";
+import {
+  toElementId,
+  toListElementId,
+  WS_REF,
+  getDefaultGrammar,
+  GrammarRegister,
+  registerToGrammar,
+} from "./util.js";
 
 // Turn interface properties into Grammar References
 export function toGrammar(iface: Interface): Grammar {
@@ -68,8 +75,7 @@ export function toGrammar(iface: Interface): Grammar {
 }
 
 // Parameterized list of things
-export type PropertyType = string
-  | { reference: string; isArray: boolean };
+export type PropertyType = string | { reference: string; isArray: boolean };
 
 export interface InterfaceProperty {
   name: string;
@@ -123,13 +129,20 @@ function handleEnum(enumNode: EnumDeclaration): GrammarElement {
   const choices: GrammarRule[] = [];
   if (enumNode && enumNode.members) {
     for (const member of enumNode.members) {
-      if (ts.isEnumMember(member) && member.name && ts.isIdentifier(member.name)) {
-        choices.push(literal(member.name.text, true));
+      // NOTE(aduffy): support union type literals as well.
+      if (ts.isEnumMember(member) && ts.isIdentifier(member.name)) {
+        // If initializer is String, we use the string value. Else, we assume a numeric value.
+        if (!member.initializer || !ts.isStringLiteral(member.initializer)) {
+          throw new Error(
+            "Only string enums are supported. Please check the String enums section of the TypeScript Handbook at https://www.typescriptlang.org/docs/handbook/enums.html"
+          );
+        }
+        choices.push(literal(member.initializer.text, true));
       }
     }
   }
 
-  return { identifier: `enum${enumNode.name.text}`, alternatives: choices };
+  return { identifier: enumNode.name.text, alternatives: choices };
 }
 
 function handleInterface(
@@ -159,13 +172,11 @@ function handleInterface(
     }
     const propName = child.name.getText(srcFile);
     const propType = child.type?.getText(srcFile) ?? "never";
-  
+
     // Validate one of the accepted types
     let propTypeValidated: PropertyType;
     if (register.has(propType)) {
       propTypeValidated = propType;
-    } else if (register.has(`enum${propType}`)) {
-      propTypeValidated = `enum${propType}`;
     } else if (propType === "string[]" || propType === "Array<string>") {
       propTypeValidated = "stringlist";
     } else if (propType === "number[]" || propType === "Array<number>") {
@@ -212,7 +223,7 @@ export function compile(source: string, rootType: string): Grammar {
   });
 
   // Get the default Grammar Register
-  const register = getGrammarRegister();
+  const register = getDefaultGrammar();
 
   // Run the compiler to ensure that the typescript source file is correct.
   const emitResult = program.emit();
@@ -233,10 +244,9 @@ export function compile(source: string, rootType: string): Grammar {
       declaredTypes.add(child.name.getText(srcFile));
     }
 
-    // Add the Enum to Gramma Register
+    // Add the Enum to Grammar Register
     if (ts.isEnumDeclaration(child)) {
-      const element = handleEnum(child);
-      register.set(element.identifier, element.alternatives);
+      declaredTypes.add(child.name.getText(srcFile));
     }
   });
 
@@ -247,25 +257,19 @@ export function compile(source: string, rootType: string): Grammar {
     );
   }
 
-  // Create the Enum Type for each enum
-
-  // Define basic grammar rules
+  // Import default grammar rules
   const grammar: Grammar = {
-    elements: [...registerToGrammar(register)]
-  }
+    elements: [...registerToGrammar(register)],
+  };
 
   srcFile.forEachChild((child) => {
     if (ts.isInterfaceDeclaration(child)) {
-      const iface = handleInterface(
-        child,
-        srcFile,
-        declaredTypes,
-        register
-      );
+      const iface = handleInterface(child, srcFile, declaredTypes, register);
       const ifaceGrammar = toGrammar(iface);
-
-      // Add grammar rules above basic grammar rules
       grammar.elements.unshift(...ifaceGrammar.elements);
+    } else if (ts.isEnumDeclaration(child)) {
+      const enumGrammar = handleEnum(child);
+      grammar.elements.unshift(enumGrammar);
     }
   });
 

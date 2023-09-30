@@ -82,16 +82,18 @@ function serializeSequence(rule: RuleSequence): string {
 
 function serializeGroup(rule: RuleGroup): string {
   const multiplicity = {
-    "none": "",
-    "optional": "?",
-    "star": "*",
-    "plus": "+",
+    none: "",
+    optional: "?",
+    star: "*",
+    plus: "+",
   }[rule.multiplicity];
   return `(${serializeSequence(rule.rules)})${multiplicity}`;
 }
 
 function serializeLiteralRule(rule: RuleLiteral): string {
-  return rule.quote ? "\"\\\"\" " + JSON.stringify(rule.literal) + " \"\\\"\"" : JSON.stringify(rule.literal);
+  return rule.quote
+    ? '"\\"" ' + JSON.stringify(rule.literal) + ' "\\""'
+    : JSON.stringify(rule.literal);
 }
 
 function serializeReference(rule: RuleReference): string {
@@ -136,7 +138,7 @@ export function serializeGrammar(grammar: Grammar): string {
   return out;
 }
 
-export function literal(value: string, quote: boolean=false): RuleLiteral {
+export function literal(value: string, quote: boolean = false): RuleLiteral {
   return {
     type: "literal",
     literal: value,
@@ -165,10 +167,13 @@ export function reference(value: string): RuleReference {
   };
 }
 
-export function group(rules: RuleSequence, multiplicity: RuleGroup["multiplicity"]): RuleGroup {
+export function group(
+  rules: RuleSequence,
+  multiplicity: RuleGroup["multiplicity"]
+): RuleGroup {
   return {
     type: "group",
     rules,
     multiplicity,
-  }
+  };
 }

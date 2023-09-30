@@ -13,7 +13,7 @@ jobs:
           node-version: '16.x'
           registry-url: 'https://registry.npmjs.org'
       - run: npm ci
-      - run: npx tsc
+      - run: npm run build
       - run: npm --no-git-tag-version version from-git
       - run: npm publish --access public
         env:
