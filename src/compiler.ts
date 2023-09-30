@@ -124,7 +124,7 @@ function handleEnum(enumNode: EnumDeclaration): GrammarElement {
   if (enumNode && enumNode.members) {
     for (const member of enumNode.members) {
       if (ts.isEnumMember(member) && member.name && ts.isIdentifier(member.name)) {
-        choices.push(literal(member.name.text));
+        choices.push(literal(member.name.text, true));
       }
     }
   }
@@ -197,7 +197,7 @@ function handleInterface(
  * @param source
  * @returns
  */
-export function compile(source: string, rootType: string, enums?: string): Grammar {
+export function compile(source: string, rootType: string): Grammar {
   const host = createInMemoryCompilerHost();
 
   const srcFile = host.addSource("source.ts", source);

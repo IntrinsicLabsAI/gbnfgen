@@ -54,7 +54,7 @@ ws ::= [ \t\n]*
 number ::= [0-9]+   "."?   [0-9]*
 stringlist ::= "["   ws   "]" | "["   ws   string   (","   ws   string)*   ws   "]"
 numberlist ::= "["   ws   "]" | "["   ws   string   (","   ws   number)*   ws   "]"
-enumAddressType ::= "business" | "home"`.trim()
+enumAddressType ::= "\"" "business" "\"" | "\"" "home" "\""`.trim()
   )
 });
 
@@ -143,8 +143,8 @@ ws ::= [ \t\n]*
 number ::= [0-9]+   "."?   [0-9]*
 stringlist ::= "["   ws   "]" | "["   ws   string   (","   ws   string)*   ws   "]"
 numberlist ::= "["   ws   "]" | "["   ws   string   (","   ws   number)*   ws   "]"
-enumProductCategory ::= "Electronics" | "Clothing" | "Food"
-enumOrderStatus ::= "Pending" | "Shipped" | "Delivered" | "Canceled"`.trim()
+enumProductCategory ::= "\"" "Electronics" "\"" | "\"" "Clothing" "\"" | "\"" "Food" "\""
+enumOrderStatus ::= "\"" "Pending" "\"" | "\"" "Shipped" "\"" | "\"" "Delivered" "\"" | "\"" "Canceled" "\""`.trim()
   )
 });
 
