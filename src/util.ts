@@ -85,7 +85,7 @@ export type GrammarRegister = Map<string, Array<GrammarRule>>;
  * Enables Enum add to the register when compiling the source file.
  * @returns The Default Grammar Element Register
  */
-export function getGrammarRegister(): GrammarRegister {
+export function getDefaultGrammar(): GrammarRegister {
   const register = new Map<string, Array<GrammarRule>>();
   
   register.set(STRING_ELEM.identifier, STRING_ELEM.alternatives);

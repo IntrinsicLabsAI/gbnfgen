@@ -30,7 +30,7 @@ numberlist ::= "["   ws   "]" | "["   ws   string   (","   ws   number)*   ws   
 
 test("Single interface with enum generation", () => {
   const postalAddressGrammar = compile(
-    `enum AddressType { business, home };
+    `enum AddressType { Business = "business", Home = "home" };
     interface PostalAddress {
     streetNumber: number;
     type: AddressType;
@@ -41,21 +41,21 @@ test("Single interface with enum generation", () => {
   }`,
     "PostalAddress"
   );
-  
-  
+
   expect(serializeGrammar(postalAddressGrammar).trimEnd()).toEqual(
     String.raw`
 root ::= PostalAddress
-PostalAddress ::= "{"   ws   "\"streetNumber\":"   ws   number   ","   ws   "\"type\":"   ws   enumAddressType   ","   ws   "\"street\":"   ws   string   ","   ws   "\"city\":"   ws   string   ","   ws   "\"state\":"   ws   string   ","   ws   "\"postalCode\":"   ws   number   "}"
+PostalAddress ::= "{"   ws   "\"streetNumber\":"   ws   number   ","   ws   "\"type\":"   ws   AddressType   ","   ws   "\"street\":"   ws   string   ","   ws   "\"city\":"   ws   string   ","   ws   "\"state\":"   ws   string   ","   ws   "\"postalCode\":"   ws   number   "}"
 PostalAddresslist ::= "[]" | "["   ws   PostalAddress   (","   ws   PostalAddress)*   "]"
+AddressType ::= "\"" "business" "\"" | "\"" "home" "\""
 string ::= "\""   ([^"]*)   "\""
 boolean ::= "true" | "false"
 ws ::= [ \t\n]*
 number ::= [0-9]+   "."?   [0-9]*
 stringlist ::= "["   ws   "]" | "["   ws   string   (","   ws   string)*   ws   "]"
 numberlist ::= "["   ws   "]" | "["   ws   string   (","   ws   number)*   ws   "]"
-enumAddressType ::= "\"" "business" "\"" | "\"" "home" "\""`.trim()
-  )
+`.trim()
+  );
 });
 
 test("Single multiple interface with references generation", () => {
@@ -96,9 +96,9 @@ test("Single multiple interface and enum with references generation", () => {
     `
     // Define an enum for product categories
     enum ProductCategory {
-      Electronics,
-      Clothing,
-      Food
+      Electronics = "Electronics",
+      Clothing = "Clothing",
+      Food = "Food"
     }
     
     // Define an interface for representing a product
@@ -112,10 +112,10 @@ test("Single multiple interface and enum with references generation", () => {
     
     // Define an enum for order statuses
     enum OrderStatus {
-      Pending,
-      Shipped,
-      Delivered,
-      Canceled
+      Pending = "Pending",
+      Shipped = "Shipped",
+      Delivered = "Delivered",
+      Canceled = "Canceled"
     }
     
     // Define an interface for representing an order
@@ -128,24 +128,24 @@ test("Single multiple interface and enum with references generation", () => {
   `,
     "Order"
   );
-  
 
   expect(serializeGrammar(resumeGrammar).trimEnd()).toEqual(
     String.raw`
 root ::= Order
-Order ::= "{"   ws   "\"orderId\":"   ws   number   ","   ws   "\"products\":"   ws   Productlist   ","   ws   "\"status\":"   ws   enumOrderStatus   ","   ws   "\"orderDate\":"   ws   string   "}"
+Order ::= "{"   ws   "\"orderId\":"   ws   number   ","   ws   "\"products\":"   ws   Productlist   ","   ws   "\"status\":"   ws   OrderStatus   ","   ws   "\"orderDate\":"   ws   string   "}"
 Orderlist ::= "[]" | "["   ws   Order   (","   ws   Order)*   "]"
-Product ::= "{"   ws   "\"id\":"   ws   number   ","   ws   "\"name\":"   ws   string   ","   ws   "\"description\":"   ws   string   ","   ws   "\"price\":"   ws   number   ","   ws   "\"category\":"   ws   enumProductCategory   "}"
+OrderStatus ::= "\"" "Pending" "\"" | "\"" "Shipped" "\"" | "\"" "Delivered" "\"" | "\"" "Canceled" "\""
+Product ::= "{"   ws   "\"id\":"   ws   number   ","   ws   "\"name\":"   ws   string   ","   ws   "\"description\":"   ws   string   ","   ws   "\"price\":"   ws   number   ","   ws   "\"category\":"   ws   ProductCategory   "}"
 Productlist ::= "[]" | "["   ws   Product   (","   ws   Product)*   "]"
+ProductCategory ::= "\"" "Electronics" "\"" | "\"" "Clothing" "\"" | "\"" "Food" "\""
 string ::= "\""   ([^"]*)   "\""
 boolean ::= "true" | "false"
 ws ::= [ \t\n]*
 number ::= [0-9]+   "."?   [0-9]*
 stringlist ::= "["   ws   "]" | "["   ws   string   (","   ws   string)*   ws   "]"
 numberlist ::= "["   ws   "]" | "["   ws   string   (","   ws   number)*   ws   "]"
-enumProductCategory ::= "\"" "Electronics" "\"" | "\"" "Clothing" "\"" | "\"" "Food" "\""
-enumOrderStatus ::= "\"" "Pending" "\"" | "\"" "Shipped" "\"" | "\"" "Delivered" "\"" | "\"" "Canceled" "\""`.trim()
-  )
+`.trim()
+  );
 });
 
 test("Jsonformer car example", () => {

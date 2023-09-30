@@ -25,12 +25,20 @@ import { compile, serializeGrammar } from "@intrinsicai/gbnfgen";
 
 // Supporting Enum for multiple choices (cannot be numbers)
 const grammar = compile(
-    `enum Mood { Happy, Sad, Grateful, Excited, Angry, Peaceful }
+    `enum Mood {
+      Happy = "happy",
+      Sad = "sad",
+      Grateful = "grateful",
+      Excited = "excited", 
+      Angry = "angry, 
+      Peaceful = "peaceful"
+    }
     
     interface Person {
          name: string;
          occupation: string;
          age: number;
+         mood: Mood,
      }`, "Person");
 ```
 
