@@ -6,8 +6,8 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "git-version": "npm version $(git describe --tags --always --first-parent)",
-    "exec": "tsc && node ./dist/grammarTest.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc",
+    "test": "vitest"
   },
   "type": "module",
   "author": "Intrinsic Labs",

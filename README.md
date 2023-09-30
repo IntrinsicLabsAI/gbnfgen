@@ -23,8 +23,11 @@ npm i --save @intrinsicai/gbnfgen
 ```typescript
 import { compile, serializeGrammar } from "@intrinsicai/gbnfgen";
 
+// Supporting Enum for multiple choices (cannot be numbers)
 const grammar = compile(
-    `interface Person {
+    `enum Mood { Happy, Sad, Grateful, Excited, Angry, Peaceful }
+    
+    interface Person {
          name: string;
          occupation: string;
          age: number;

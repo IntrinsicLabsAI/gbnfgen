@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
-import { baseGrammar, compile } from "./compiler.js";
-import { Grammar, reference, serializeGrammar } from "./grammar.js";
+import { compile } from "./compiler.js";
+import { serializeGrammar } from "./grammar.js";
 
 test("Single interface generation", () => {
   const postalAddressGrammar = compile(
@@ -26,6 +26,36 @@ number ::= [0-9]+   "."?   [0-9]*
 stringlist ::= "["   ws   "]" | "["   ws   string   (","   ws   string)*   ws   "]"
 numberlist ::= "["   ws   "]" | "["   ws   string   (","   ws   number)*   ws   "]"`.trim()
   );
+});
+
+test("Single interface with enum generation", () => {
+  const postalAddressGrammar = compile(
+    `enum AddressType { business, home };
+    interface PostalAddress {
+    streetNumber: number;
+    type: AddressType;
+    street: string;
+    city: string;
+    state: string;
+    postalCode: number;
+  }`,
+    "PostalAddress"
+  );
+  
+  
+  expect(serializeGrammar(postalAddressGrammar).trimEnd()).toEqual(
+    String.raw`
+root ::= PostalAddress
+PostalAddress ::= "{"   ws   "\"streetNumber\":"   ws   number   ","   ws   "\"type\":"   ws   enumAddressType   ","   ws   "\"street\":"   ws   string   ","   ws   "\"city\":"   ws   string   ","   ws   "\"state\":"   ws   string   ","   ws   "\"postalCode\":"   ws   number   "}"
+PostalAddresslist ::= "[]" | "["   ws   PostalAddress   (","   ws   PostalAddress)*   "]"
+string ::= "\""   ([^"]*)   "\""
+boolean ::= "true" | "false"
+ws ::= [ \t\n]*
+number ::= [0-9]+   "."?   [0-9]*
+stringlist ::= "["   ws   "]" | "["   ws   string   (","   ws   string)*   ws   "]"
+numberlist ::= "["   ws   "]" | "["   ws   string   (","   ws   number)*   ws   "]"
+enumAddressType ::= "\"" "business" "\"" | "\"" "home" "\""`.trim()
+  )
 });
 
 test("Single multiple interface with references generation", () => {
@@ -59,6 +89,63 @@ ws ::= [ \t\n]*
 number ::= [0-9]+   "."?   [0-9]*
 stringlist ::= "["   ws   "]" | "["   ws   string   (","   ws   string)*   ws   "]"
 numberlist ::= "["   ws   "]" | "["   ws   string   (","   ws   number)*   ws   "]"`);
+});
+
+test("Single multiple interface and enum with references generation", () => {
+  const resumeGrammar = compile(
+    `
+    // Define an enum for product categories
+    enum ProductCategory {
+      Electronics,
+      Clothing,
+      Food
+    }
+    
+    // Define an interface for representing a product
+    interface Product {
+      id: number;
+      name: string;
+      description: string;
+      price: number;
+      category: ProductCategory;
+    }
+    
+    // Define an enum for order statuses
+    enum OrderStatus {
+      Pending,
+      Shipped,
+      Delivered,
+      Canceled
+    }
+    
+    // Define an interface for representing an order
+    interface Order {
+      orderId: number;
+      products: Product[];
+      status: OrderStatus;
+      orderDate: string;
+    }
+  `,
+    "Order"
+  );
+  
+
+  expect(serializeGrammar(resumeGrammar).trimEnd()).toEqual(
+    String.raw`
+root ::= Order
+Order ::= "{"   ws   "\"orderId\":"   ws   number   ","   ws   "\"products\":"   ws   Productlist   ","   ws   "\"status\":"   ws   enumOrderStatus   ","   ws   "\"orderDate\":"   ws   string   "}"
+Orderlist ::= "[]" | "["   ws   Order   (","   ws   Order)*   "]"
+Product ::= "{"   ws   "\"id\":"   ws   number   ","   ws   "\"name\":"   ws   string   ","   ws   "\"description\":"   ws   string   ","   ws   "\"price\":"   ws   number   ","   ws   "\"category\":"   ws   enumProductCategory   "}"
+Productlist ::= "[]" | "["   ws   Product   (","   ws   Product)*   "]"
+string ::= "\""   ([^"]*)   "\""
+boolean ::= "true" | "false"
+ws ::= [ \t\n]*
+number ::= [0-9]+   "."?   [0-9]*
+stringlist ::= "["   ws   "]" | "["   ws   string   (","   ws   string)*   ws   "]"
+numberlist ::= "["   ws   "]" | "["   ws   string   (","   ws   number)*   ws   "]"
+enumProductCategory ::= "\"" "Electronics" "\"" | "\"" "Clothing" "\"" | "\"" "Food" "\""
+enumOrderStatus ::= "\"" "Pending" "\"" | "\"" "Shipped" "\"" | "\"" "Delivered" "\"" | "\"" "Canceled" "\""`.trim()
+  )
 });
 
 test("Jsonformer car example", () => {
