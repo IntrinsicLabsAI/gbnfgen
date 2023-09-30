@@ -1,122 +1,32 @@
-import ts, { InterfaceDeclaration } from "typescript";
+import ts, { InterfaceDeclaration, EnumDeclaration } from "typescript";
 import {
   Grammar,
   GrammarElement,
   GrammarRule,
   RuleReference,
-  charPattern,
   group,
   literal,
   reference,
   sequence,
 } from "./grammar.js";
 
-type ElementIdentifier = string;
+import { toElementId, toListElementId, WS_REF, getGrammarRegister, GrammarRegister, registerToGrammar } from "./util.js";
 
-function toElementId(ifaceName: string): ElementIdentifier {
-  const pattern = /[^a-zA-Z0-9]/g;
-  return ifaceName.replace(pattern, "");
-}
-
-function toListElementId(ifaceName: string): ElementIdentifier {
-  return `${toElementId(ifaceName)}list`;
-}
-
-const WS_ELEM: GrammarElement = {
-  identifier: "ws",
-  alternatives: [charPattern(/[ \t\n]*/g)],
-};
-
-const STRING_ELEM: GrammarElement = {
-  identifier: "string",
-  alternatives: [sequence(literal(`"`), charPattern(/([^"]*)/g), literal(`"`))],
-};
-const BOOLEAN_ELEM: GrammarElement = {
-  identifier: "boolean",
-  alternatives: [
-    literal(`true`),
-    literal(`false`),
-  ]
-}
-const NUMBER_ELEM: GrammarElement = {
-  identifier: "number",
-  alternatives: [
-    sequence(
-      charPattern(/[0-9]+/g),
-      charPattern(/"."?/g),
-      charPattern(/[0-9]*/g)
-    ),
-  ],
-};
-const STRING_REF = reference(STRING_ELEM.identifier);
-const BOOLEAN_REF = reference(BOOLEAN_ELEM.identifier);
-const NUMBER_REF = reference(NUMBER_ELEM.identifier);
-const WS_REF: RuleReference = reference(WS_ELEM.identifier);
-const NUMBERLIST_ELEM: GrammarElement = {
-  identifier: "numberlist",
-  alternatives: [
-    // Empty list
-    sequence(literal(`[`), WS_REF, literal(`]`)),
-
-    // Non-empty list
-    sequence(
-      literal(`[`),
-      WS_REF,
-      STRING_REF,
-      group(sequence(literal(`,`), WS_REF, NUMBER_REF), "star"),
-      WS_REF,
-      literal(`]`)
-    ),
-  ],
-};
-const STRINGLIST_ELEM: GrammarElement = {
-  identifier: "stringlist",
-  alternatives: [
-    // Empty list
-    sequence(literal(`[`), WS_REF, literal(`]`)),
-
-    // Non-empty list
-    sequence(
-      literal(`[`),
-      WS_REF,
-      STRING_REF,
-      group(sequence(literal(`,`), WS_REF, STRING_REF), "star"),
-      WS_REF,
-      literal(`]`)
-    ),
-  ],
-};
-const STRINGLIST_REF = reference(STRINGLIST_ELEM.identifier);
-const NUMBERLIST_REF = reference(NUMBERLIST_ELEM.identifier);
-
+// Turn interface properties into Grammar References
 export function toGrammar(iface: Interface): Grammar {
   function propertyRules(prop: InterfaceProperty): Array<GrammarRule> {
     const { name, type } = prop;
     let typeRef: RuleReference;
-    switch (type) {
-      case "string":
-        typeRef = STRING_REF;
-        break;
-      case "number":
-        typeRef = NUMBER_REF;
-        break;
-      case "boolean":
-        typeRef = BOOLEAN_REF;
-        break;
-      case "Array<string>":
-        typeRef = STRINGLIST_REF;
-        break;
-      case "Array<number>":
-        typeRef = NUMBERLIST_REF;
-        break;
-      default:
-        if (type.isArray) {
-          typeRef = reference(toListElementId(type.reference));
-        } else {
-          typeRef = reference(toElementId(type.reference));
-        }
-        break;
+
+    // TODO: Throw exception error if grammar type not found ?
+    if (typeof type === "string") {
+      typeRef = reference(type);
+    } else if (type.isArray) {
+      typeRef = reference(toListElementId(type.reference));
+    } else {
+      typeRef = reference(toElementId(type.reference));
     }
+
     return [WS_REF, literal(`"${name}":`), WS_REF, typeRef];
   }
 
@@ -158,12 +68,7 @@ export function toGrammar(iface: Interface): Grammar {
 }
 
 // Parameterized list of things
-export type PropertyType =
-  | "string"
-  | "number"
-  | "boolean"
-  | "Array<string>"
-  | "Array<number>"
+export type PropertyType = string
   | { reference: string; isArray: boolean };
 
 export interface InterfaceProperty {
@@ -175,21 +80,9 @@ export interface Interface {
   name: string;
   properties: Array<InterfaceProperty>;
 }
+
 interface InMemoryCompilerHost extends ts.CompilerHost {
   addSource(fileName: string, code: string): ts.SourceFile;
-}
-
-export function baseGrammar(): Grammar {
-  return {
-    elements: [
-      STRING_ELEM,
-      BOOLEAN_ELEM,
-      WS_ELEM,
-      NUMBER_ELEM,
-      STRINGLIST_ELEM,
-      NUMBERLIST_ELEM,
-    ],
-  };
 }
 
 class InMemoryCompilerHostImpl implements InMemoryCompilerHost {
@@ -225,11 +118,25 @@ export function createInMemoryCompilerHost(): InMemoryCompilerHost {
   return new InMemoryCompilerHostImpl();
 }
 
+function handleEnum(enumNode: EnumDeclaration): GrammarElement {
+  // Get all the choices of the enum
+  const choices: GrammarRule[] = [];
+  if (enumNode && enumNode.members) {
+    for (const member of enumNode.members) {
+      if (ts.isEnumMember(member) && member.name && ts.isIdentifier(member.name)) {
+        choices.push(literal(member.name.text));
+      }
+    }
+  }
+
+  return { identifier: `enum${enumNode.name.text}`, alternatives: choices };
+}
+
 function handleInterface(
   iface: InterfaceDeclaration,
   srcFile: ts.SourceFile,
   declaredTypes: Set<string>,
-  typeChecker: ts.TypeChecker
+  register: GrammarRegister
 ): Interface {
   // Support array versions of each of the required types as well.
   const declaredArrayTypes: Map<string, string> = new Map();
@@ -252,21 +159,17 @@ function handleInterface(
     }
     const propName = child.name.getText(srcFile);
     const propType = child.type?.getText(srcFile) ?? "never";
-
+  
     // Validate one of the accepted types
     let propTypeValidated: PropertyType;
-    if (propType === "string") {
-      propTypeValidated = "string";
-    } else if (propType === "number") {
-      propTypeValidated = "number";
-    } else if (propType === "boolean") {
-      propTypeValidated = "boolean";
-    } else if (propType === "Array<string>" || propType === "string[]") {
-      propTypeValidated = "Array<string>";
-    } else if (propType === "Array<number>" || propType === "number[]") {
-      const type = typeChecker.getTypeAtLocation(child.type!);
-      // console.log(`TYPE: ${type}`);
-      propTypeValidated = "Array<number>";
+    if (register.has(propType)) {
+      propTypeValidated = propType;
+    } else if (register.has(`enum${propType}`)) {
+      propTypeValidated = `enum${propType}`;
+    } else if (propType === "string[]" || propType === "Array<string>") {
+      propTypeValidated = "stringlist";
+    } else if (propType === "number[]" || propType === "Array<number>") {
+      propTypeValidated = "numberlist";
     } else if (declaredTypes.has(propType)) {
       propTypeValidated = { reference: propType, isArray: false };
     } else if (declaredArrayTypes.has(propType)) {
@@ -294,7 +197,7 @@ function handleInterface(
  * @param source
  * @returns
  */
-export function compile(source: string, rootType: string): Grammar {
+export function compile(source: string, rootType: string, enums?: string): Grammar {
   const host = createInMemoryCompilerHost();
 
   const srcFile = host.addSource("source.ts", source);
@@ -308,7 +211,10 @@ export function compile(source: string, rootType: string): Grammar {
     host,
   });
 
-  // Run the compiler to ensure that the
+  // Get the default Grammar Register
+  const register = getGrammarRegister();
+
+  // Run the compiler to ensure that the typescript source file is correct.
   const emitResult = program.emit();
   if (emitResult.diagnostics.length > 0) {
     const errors = emitResult.diagnostics
@@ -320,22 +226,33 @@ export function compile(source: string, rootType: string): Grammar {
     );
   }
 
+  // Find all the declared interfaces and enums.
   let declaredTypes: Set<string> = new Set();
   srcFile.forEachChild((child) => {
     if (ts.isInterfaceDeclaration(child)) {
       declaredTypes.add(child.name.getText(srcFile));
     }
+
+    // Add the Enum to Gramma Register
+    if (ts.isEnumDeclaration(child)) {
+      const element = handleEnum(child);
+      register.set(element.identifier, element.alternatives);
+    }
   });
 
+  // Reject when the root type is not found
   if (!declaredTypes.has(rootType)) {
     throw new Error(
       `Root type ${rootType} is not one of the declared types ${declaredTypes}`
     );
   }
 
+  // Create the Enum Type for each enum
+
+  // Define basic grammar rules
   const grammar: Grammar = {
-    elements: [...baseGrammar().elements],
-  };
+    elements: [...registerToGrammar(register)]
+  }
 
   srcFile.forEachChild((child) => {
     if (ts.isInterfaceDeclaration(child)) {
@@ -343,9 +260,11 @@ export function compile(source: string, rootType: string): Grammar {
         child,
         srcFile,
         declaredTypes,
-        program.getTypeChecker()
+        register
       );
       const ifaceGrammar = toGrammar(iface);
+
+      // Add grammar rules above basic grammar rules
       grammar.elements.unshift(...ifaceGrammar.elements);
     }
   });
