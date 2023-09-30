@@ -67,6 +67,7 @@ Currently the library is narrowly focused, we only provide support for the follo
 * `number` and `number[]`
 * `boolean`
 * Interface types and single-dimensional arrays of interface types. These must be interface types that you define within a single call to `compile`
+* String enums, as defined in [this section of the TypeScript handbook](https://www.typescriptlang.org/docs/handbook/enums.html#string-enums).
 
 
 ## Inspiration
