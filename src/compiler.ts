@@ -1,4 +1,4 @@
-import ts, { InterfaceDeclaration, EnumDeclaration } from "typescript";
+import { Project, ts, InterfaceDeclaration, EnumDeclaration } from "ts-morph";
 import {
   Grammar,
   GrammarElement,
@@ -87,67 +87,30 @@ export interface Interface {
   properties: Array<InterfaceProperty>;
 }
 
-interface InMemoryCompilerHost extends ts.CompilerHost {
-  addSource(fileName: string, code: string): ts.SourceFile;
-}
-
-class InMemoryCompilerHostImpl implements InMemoryCompilerHost {
-  private files: Map<string, ts.SourceFile> = new Map<string, ts.SourceFile>();
-
-  addSource(fileName: string, code: string) {
-    if (this.files.has(fileName)) {
-      throw new Error(`File already exists: ${fileName}`);
-    }
-    const srcFile = ts.createSourceFile(fileName, code, ts.ScriptTarget.ESNext);
-    this.files.set(fileName, srcFile);
-    return srcFile;
-  }
-
-  getSourceFile = (fileName: string): ts.SourceFile | undefined => {
-    return this.files.get(fileName);
-  };
-  getDefaultLibFileName = () => "lib.d.ts";
-  writeFile = () => {
-    // Do nothing.
-  };
-  getCurrentDirectory = () => ".";
-  getCanonicalFileName = (fileName: string) => fileName;
-  useCaseSensitiveFileNames = () => true;
-  getNewLine = () => `\n`;
-  fileExists = (fileName: string) => this.files.has(fileName);
-  readFile = (fileName: string) => {
-    return this.files.get(fileName)?.getFullText();
-  };
-}
-
-export function createInMemoryCompilerHost(): InMemoryCompilerHost {
-  return new InMemoryCompilerHostImpl();
-}
-
 function handleEnum(enumNode: EnumDeclaration): GrammarElement {
   // Get all the choices of the enum
   const choices: GrammarRule[] = [];
-  if (enumNode && enumNode.members) {
-    for (const member of enumNode.members) {
+  if (enumNode && enumNode.getMembers().length > 0) {
+    for (const member of enumNode.getMembers()) {
       // NOTE(aduffy): support union type literals as well.
-      if (ts.isEnumMember(member) && ts.isIdentifier(member.name)) {
+      if (member.isKind(ts.SyntaxKind.EnumMember)) {
         // If initializer is String, we use the string value. Else, we assume a numeric value.
-        if (!member.initializer || !ts.isStringLiteral(member.initializer)) {
+        const initializer = member.getInitializer();
+        if (!initializer || !initializer.isKind(ts.SyntaxKind.StringLiteral)) {
           throw new Error(
             "Only string enums are supported. Please check the String enums section of the TypeScript Handbook at https://www.typescriptlang.org/docs/handbook/enums.html"
           );
         }
-        choices.push(literal(member.initializer.text, true));
+        choices.push(literal(initializer.getText()));
       }
     }
   }
 
-  return { identifier: enumNode.name.text, alternatives: choices };
+  return { identifier: enumNode.getName(), alternatives: choices };
 }
 
 function handleInterface(
   iface: InterfaceDeclaration,
-  srcFile: ts.SourceFile,
   declaredTypes: Set<string>,
   register: GrammarRegister
 ): Interface {
@@ -157,21 +120,22 @@ function handleInterface(
     declaredArrayTypes.set(`${declType}[]`, declType);
   }
 
-  if (iface.typeParameters) {
+  if (iface.getTypeParameters().length > 0) {
+    console.log(iface.getFullText());
     throw new Error(
-      `${iface.name.getText(srcFile)}: interfaces cannot have type parameters`
+      `${iface.getName()}: interfaces cannot have type parameters`
     );
   }
-  const ifaceName = iface.name.getText(srcFile);
+  const ifaceName = iface.getName();
   const props: Array<InterfaceProperty> = [];
-  for (const child of iface.members) {
-    if (!ts.isPropertySignature(child)) {
+  for (const child of iface.getMembers()) {
+    if (!child.isKind(ts.SyntaxKind.PropertySignature)) {
       throw new Error(
         `Invalid interface member: interfaces must only contain properties, contained ${child}`
       );
     }
-    const propName = child.name.getText(srcFile);
-    const propType = child.type?.getText(srcFile) ?? "never";
+    const propName = child.getName();
+    const propType = child.getType().getText();
 
     // Validate one of the accepted types
     let propTypeValidated: PropertyType;
@@ -204,58 +168,70 @@ function handleInterface(
 }
 
 /**
- * Main compilation function, targeting {@link Grammar} type from raw TypeScript interface source code.
+ * Async variant of main compilation function, targeting {@link Grammar} type from raw TypeScript interface source code.
  * @param source
  * @returns
  */
-export function compile(source: string, rootType: string): Grammar {
-  const host = createInMemoryCompilerHost();
+export async function compile(
+  source: string,
+  rootType: string
+): Promise<Grammar> {
+  return new Promise((resolve, reject) => {
+    try {
+      const grammar = compileSync(source, rootType);
+      resolve(grammar);
+    } catch (e) {
+      reject(e);
+    }
+  });
+}
 
-  const srcFile = host.addSource("source.ts", source);
-  const program = ts.createProgram({
-    rootNames: ["source.ts"],
-    options: {
-      ...ts.getDefaultCompilerOptions(),
-      // TODO(aduffy): Turn this back on to force failure on compile/type-checking errors.
-      // noEmitOnError: true,
+/**
+ * Sync variant of main compilation function, targeting {@link Grammar} type from raw TypeScript interface source code.
+ * @param source
+ * @returns
+ */
+export function compileSync(source: string, rootType: string): Grammar {
+  const project = new Project({
+    useInMemoryFileSystem: true,
+    compilerOptions: {
+      lib: ["lib.es5.d.ts"],
     },
-    host,
   });
 
-  // Get the default Grammar Register
-  const register = getDefaultGrammar();
+  // Import the file from local node_modules and import at build time.
+  const srcFile = project.createSourceFile("source.ts", source);
 
-  // Run the compiler to ensure that the typescript source file is correct.
-  const emitResult = program.emit();
-  if (emitResult.diagnostics.length > 0) {
-    const errors = emitResult.diagnostics
-      .filter((diag) => diag.category === ts.DiagnosticCategory.Error)
-      .map((err) => err.messageText)
+  const emitResult = project.emitToMemory();
+
+  // const emitResult = program.emit();
+  const diagnostics = project
+    .getPreEmitDiagnostics()
+    .concat(emitResult.getDiagnostics());
+  if (diagnostics.length > 0) {
+    const errors = diagnostics
+      .filter((diag) => diag.getCategory() === ts.DiagnosticCategory.Error)
+      .map((err) => err.getMessageText())
       .join("\n");
-    throw new Error(
-      `Compilation or provided TypeScript source failed: ${errors}`
-    );
+
+    throw new Error(`Compilation failed: ${errors}`);
   }
 
   // Find all the declared interfaces and enums.
   let declaredTypes: Set<string> = new Set();
   srcFile.forEachChild((child) => {
-    if (ts.isInterfaceDeclaration(child)) {
-      declaredTypes.add(child.name.getText(srcFile));
+    if (child.isKind(ts.SyntaxKind.InterfaceDeclaration)) {
+      declaredTypes.add(child.getName());
     }
 
     // Add the Enum to Grammar Register
-    if (ts.isEnumDeclaration(child)) {
-      declaredTypes.add(child.name.getText(srcFile));
+    else if (child.isKind(ts.SyntaxKind.EnumDeclaration)) {
+      declaredTypes.add(child.getName());
     }
   });
 
-  // Reject when the root type is not found
-  if (!declaredTypes.has(rootType)) {
-    throw new Error(
-      `Root type ${rootType} is not one of the declared types ${declaredTypes}`
-    );
-  }
+  // Get the default Grammar Register
+  const register = getDefaultGrammar();
 
   // Import default grammar rules
   const grammar: Grammar = {
@@ -263,15 +239,38 @@ export function compile(source: string, rootType: string): Grammar {
   };
 
   srcFile.forEachChild((child) => {
-    if (ts.isInterfaceDeclaration(child)) {
-      const iface = handleInterface(child, srcFile, declaredTypes, register);
-      const ifaceGrammar = toGrammar(iface);
-      grammar.elements.unshift(...ifaceGrammar.elements);
-    } else if (ts.isEnumDeclaration(child)) {
-      const enumGrammar = handleEnum(child);
-      grammar.elements.unshift(enumGrammar);
+    switch (child.getKind()) {
+      case ts.SyntaxKind.InterfaceDeclaration:
+        const iface = handleInterface(
+          child as InterfaceDeclaration,
+          declaredTypes,
+          register
+        );
+        const ifaceGrammar = toGrammar(iface);
+        grammar.elements.unshift(...ifaceGrammar.elements);
+        break;
+      case ts.SyntaxKind.EnumDeclaration:
+        const enumGrammar = handleEnum(child as EnumDeclaration);
+        grammar.elements.unshift(enumGrammar);
+        break;
+      case ts.SyntaxKind.EndOfFileToken:
+      case ts.SyntaxKind.EmptyStatement:
+        break;
+      default:
+        throw new Error(
+          `Invalid top-level declaration of kind ${child.getKindName()}: ${child.getText()}`
+        );
     }
   });
+
+  // Reject when the root type is not found
+  if (!declaredTypes.has(rootType)) {
+    throw new Error(
+      `Root type ${rootType} is not one of the declared types ${Array.from(
+        declaredTypes.values()
+      )}`
+    );
+  }
 
   grammar.elements.unshift({
     identifier: "root",
