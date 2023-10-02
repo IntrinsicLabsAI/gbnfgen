@@ -1,15 +1,19 @@
+![logo](./logo.png)
+
 [![npm version](https://badge.fury.io/js/@intrinsicai%2Fgbnfgen.svg)](https://badge.fury.io/js/@intrinsicai%2Fgbnfgen)
 [![NPM Publish](https://github.com/IntrinsicLabsAI/gbnfgen/actions/workflows/npm.yml/badge.svg)](https://github.com/IntrinsicLabsAI/gbnfgen/actions/workflows/npm.yml)
 
 
-# GGML BNF Grammar Generator
+## What is it?
 
-> _Generate llama.cpp compatible grammar files to guarantee valid JSON outputs from LLMs_
+gbnfgen is a library for generating grammars based on your typed JSON objects, described through normal TypeScript interfaces and enums.
+
+Generate API calls (and responses) parse free text into structured formats, and build your own llama.cpp-powered agents with ease!
+
 
 Check out the [Live Demo](https://grammar.intrinsiclabs.ai/).
 
 
------
 
 ## Installation
 
