@@ -1,3 +1,5 @@
+![logo](./logo.png)
+
 [![npm version](https://badge.fury.io/js/@intrinsicai%2Fgbnfgen.svg)](https://badge.fury.io/js/@intrinsicai%2Fgbnfgen)
 [![NPM Publish](https://github.com/IntrinsicLabsAI/gbnfgen/actions/workflows/npm.yml/badge.svg)](https://github.com/IntrinsicLabsAI/gbnfgen/actions/workflows/npm.yml)
 
