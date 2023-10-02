@@ -1,9 +1,9 @@
 import { expect, test } from "vitest";
-import { compile } from "./compiler.js";
+import { compile, compileSync } from "./compiler.js";
 import { serializeGrammar } from "./grammar.js";
 
 test("Single interface generation", () => {
-  const postalAddressGrammar = compile(
+  const postalAddressGrammar = compileSync(
     `interface PostalAddress {
     streetNumber: number;
     street: string;
@@ -29,7 +29,7 @@ numberlist ::= "["   ws   "]" | "["   ws   string   (","   ws   number)*   ws   
 });
 
 test("Single interface with enum generation", () => {
-  const postalAddressGrammar = compile(
+  const postalAddressGrammar = compileSync(
     `enum AddressType { Business = "business", Home = "home" };
     interface PostalAddress {
     streetNumber: number;
@@ -47,7 +47,7 @@ test("Single interface with enum generation", () => {
 root ::= PostalAddress
 PostalAddress ::= "{"   ws   "\"streetNumber\":"   ws   number   ","   ws   "\"type\":"   ws   AddressType   ","   ws   "\"street\":"   ws   string   ","   ws   "\"city\":"   ws   string   ","   ws   "\"state\":"   ws   string   ","   ws   "\"postalCode\":"   ws   number   "}"
 PostalAddresslist ::= "[]" | "["   ws   PostalAddress   (","   ws   PostalAddress)*   "]"
-AddressType ::= "\"" "business" "\"" | "\"" "home" "\""
+AddressType ::= "\"business\"" | "\"home\""
 string ::= "\""   ([^"]*)   "\""
 boolean ::= "true" | "false"
 ws ::= [ \t\n]*
@@ -59,7 +59,7 @@ numberlist ::= "["   ws   "]" | "["   ws   string   (","   ws   number)*   ws   
 });
 
 test("Single multiple interface with references generation", () => {
-  const resumeGrammar = compile(
+  const resumeGrammar = compileSync(
     `
   interface JobCandidate {
     name: string;
@@ -92,7 +92,7 @@ numberlist ::= "["   ws   "]" | "["   ws   string   (","   ws   number)*   ws   
 });
 
 test("Single multiple interface and enum with references generation", () => {
-  const resumeGrammar = compile(
+  const resumeGrammar = compileSync(
     `
     // Define an enum for product categories
     enum ProductCategory {
@@ -134,10 +134,10 @@ test("Single multiple interface and enum with references generation", () => {
 root ::= Order
 Order ::= "{"   ws   "\"orderId\":"   ws   number   ","   ws   "\"products\":"   ws   Productlist   ","   ws   "\"status\":"   ws   OrderStatus   ","   ws   "\"orderDate\":"   ws   string   "}"
 Orderlist ::= "[]" | "["   ws   Order   (","   ws   Order)*   "]"
-OrderStatus ::= "\"" "Pending" "\"" | "\"" "Shipped" "\"" | "\"" "Delivered" "\"" | "\"" "Canceled" "\""
+OrderStatus ::= "\"Pending\"" | "\"Shipped\"" | "\"Delivered\"" | "\"Canceled\""
 Product ::= "{"   ws   "\"id\":"   ws   number   ","   ws   "\"name\":"   ws   string   ","   ws   "\"description\":"   ws   string   ","   ws   "\"price\":"   ws   number   ","   ws   "\"category\":"   ws   ProductCategory   "}"
 Productlist ::= "[]" | "["   ws   Product   (","   ws   Product)*   "]"
-ProductCategory ::= "\"" "Electronics" "\"" | "\"" "Clothing" "\"" | "\"" "Food" "\""
+ProductCategory ::= "\"Electronics\"" | "\"Clothing\"" | "\"Food\""
 string ::= "\""   ([^"]*)   "\""
 boolean ::= "true" | "false"
 ws ::= [ \t\n]*
@@ -149,13 +149,19 @@ numberlist ::= "["   ws   "]" | "["   ws   string   (","   ws   number)*   ws   
 });
 
 test("Jsonformer car example", () => {
-  const grammar = compile(
+  const grammar = compileSync(
     `
+  // The car and owner
   interface CarAndOwner {
+
+    /*
+     The car component
+     */
     car: Car;
     owner: Owner;
   }
     
+  // The car
   interface Car {
     make: string;
     model: string;
@@ -193,6 +199,152 @@ test("Jsonformer car example", () => {
     horsepower: number;
     topSpeed: number;
   }`,
+    "CarAndOwner"
+  );
+
+  expect(serializeGrammar(grammar).trimEnd()).toEqual(
+    String.raw`
+root ::= CarAndOwner
+PerformanceFeature ::= "{"   ws   "\"engine\":"   ws   string   ","   ws   "\"horsepower\":"   ws   number   ","   ws   "\"topSpeed\":"   ws   number   "}"
+PerformanceFeaturelist ::= "[]" | "["   ws   PerformanceFeature   (","   ws   PerformanceFeature)*   "]"
+SafetyFeature ::= "{"   ws   "\"airbags\":"   ws   number   ","   ws   "\"parkingSensors\":"   ws   number   ","   ws   "\"laneAssist\":"   ws   number   "}"
+SafetyFeaturelist ::= "[]" | "["   ws   SafetyFeature   (","   ws   SafetyFeature)*   "]"
+AudioFeature ::= "{"   ws   "\"brand\":"   ws   string   ","   ws   "\"speakers\":"   ws   number   ","   ws   "\"hasBluetooth\":"   ws   boolean   "}"
+AudioFeaturelist ::= "[]" | "["   ws   AudioFeature   (","   ws   AudioFeature)*   "]"
+Features ::= "{"   ws   "\"audio\":"   ws   AudioFeature   ","   ws   "\"safety\":"   ws   SafetyFeature   ","   ws   "\"performance\":"   ws   PerformanceFeature   "}"
+Featureslist ::= "[]" | "["   ws   Features   (","   ws   Features)*   "]"
+Owner ::= "{"   ws   "\"firstName\":"   ws   string   ","   ws   "\"lastName\":"   ws   string   ","   ws   "\"age\":"   ws   number   "}"
+Ownerlist ::= "[]" | "["   ws   Owner   (","   ws   Owner)*   "]"
+Car ::= "{"   ws   "\"make\":"   ws   string   ","   ws   "\"model\":"   ws   string   ","   ws   "\"year\":"   ws   number   ","   ws   "\"colors\":"   ws   stringlist   ","   ws   "\"features\":"   ws   Features   "}"
+Carlist ::= "[]" | "["   ws   Car   (","   ws   Car)*   "]"
+CarAndOwner ::= "{"   ws   "\"car\":"   ws   Car   ","   ws   "\"owner\":"   ws   Owner   "}"
+CarAndOwnerlist ::= "[]" | "["   ws   CarAndOwner   (","   ws   CarAndOwner)*   "]"
+string ::= "\""   ([^"]*)   "\""
+boolean ::= "true" | "false"
+ws ::= [ \t\n]*
+number ::= [0-9]+   "."?   [0-9]*
+stringlist ::= "["   ws   "]" | "["   ws   string   (","   ws   string)*   ws   "]"
+numberlist ::= "["   ws   "]" | "["   ws   string   (","   ws   number)*   ws   "]"`.trim()
+  );
+});
+
+test("compiler errors", () => {
+  expect(() =>
+    compileSync(
+      `
+    interface failure {
+      name: string;
+      name: number;
+    }
+    `,
+      "failure"
+    )
+  ).toThrowError(`Duplicate identifier 'name'.`);
+
+  expect(() =>
+    compileSync(
+      `
+    interface failure {
+      name1: string;
+      name2: myfaketype;
+    }
+    `,
+      "failure"
+    )
+  ).toThrowError(`Compilation failed: Cannot find name 'myfaketype'.`);
+
+  expect(() =>
+    compileSync(
+      `
+      const failure = {};
+    `,
+      "failure"
+    )
+  ).toThrowError(
+    `Invalid top-level declaration of kind VariableStatement: const failure = {};`
+  );
+
+  // TODO(aduffy): fix when TypeAliasDeclaration support has been added.
+  expect(() =>
+    compileSync(
+      `
+      type Person = string;
+      interface failure {
+        name: Person;
+      }
+    `,
+      "failure"
+    )
+  ).toThrowError(
+    `Invalid top-level declaration of kind TypeAliasDeclaration: type Person = string;`
+  );
+});
+
+test("async", async () => {
+  await expect(
+    compile(
+      `
+    type Person = string;
+    interface failure {
+      name: Person;
+    }
+  `,
+      "failure"
+    )
+  ).rejects.toThrow(
+    "Invalid top-level declaration of kind TypeAliasDeclaration: type Person = string;"
+  );
+
+  const grammar = await compile(
+    `
+// The car and owner
+interface CarAndOwner {
+
+  /*
+   The car component
+   */
+  car: Car;
+  owner: Owner;
+}
+  
+// The car
+interface Car {
+  make: string;
+  model: string;
+  year: number;
+  colors: string[];
+  features: Features;
+}
+
+interface Owner {
+  firstName: string;
+  lastName: string;
+  age: number;
+}
+
+interface Features {
+  audio: AudioFeature;
+  safety: SafetyFeature;
+  performance: PerformanceFeature;
+}
+
+interface AudioFeature {
+  brand: string;
+  speakers: number;
+  hasBluetooth: boolean;
+}
+
+interface SafetyFeature {
+  airbags: number;
+  parkingSensors: number;
+  laneAssist: number;
+}
+
+interface PerformanceFeature {
+  engine: string;
+  horsepower: number;
+  topSpeed: number;
+}`,
     "CarAndOwner"
   );
 

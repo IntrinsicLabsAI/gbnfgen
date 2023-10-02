@@ -28,7 +28,6 @@ export interface RuleGroup {
 export interface RuleLiteral {
   type: "literal";
   literal: string;
-  quote: boolean;
 }
 
 export interface RuleReference {
@@ -91,9 +90,7 @@ function serializeGroup(rule: RuleGroup): string {
 }
 
 function serializeLiteralRule(rule: RuleLiteral): string {
-  return rule.quote
-    ? '"\\"" ' + JSON.stringify(rule.literal) + ' "\\""'
-    : JSON.stringify(rule.literal);
+  return JSON.stringify(rule.literal);
 }
 
 function serializeReference(rule: RuleReference): string {
@@ -138,11 +135,10 @@ export function serializeGrammar(grammar: Grammar): string {
   return out;
 }
 
-export function literal(value: string, quote: boolean = false): RuleLiteral {
+export function literal(value: string): RuleLiteral {
   return {
     type: "literal",
     literal: value,
-    quote: quote,
   };
 }
 
