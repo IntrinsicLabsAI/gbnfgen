@@ -1,4 +1,4 @@
-import { compileSync } from "./compiler.js";
+import { compile, compileSync } from "./compiler.js";
 import {
   serializeGrammar,
   Grammar,
@@ -23,7 +23,8 @@ import {
 } from "./grammar.js";
 
 export {
-  compileSync as compile,
+  compile,
+  compileSync,
   serializeGrammar,
   Grammar,
   GrammarElement,
