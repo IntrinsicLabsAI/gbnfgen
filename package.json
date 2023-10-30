@@ -7,7 +7,7 @@
   "scripts": {
     "git-version": "npm version $(git describe --tags --always --first-parent)",
     "build": "tsc",
-    "test": "vitest"
+    "test": "vitest run"
   },
   "type": "module",
   "author": "Intrinsic Labs",
