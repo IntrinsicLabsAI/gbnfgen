@@ -5,7 +5,7 @@ import { serializeGrammar } from "./grammar.js";
 test("union types", () => {
   const grammar = compileSync(`
   interface Person {
-    age: number | string;
+    age: number[] | string[];
   }
   `, "Person"
   );
@@ -13,7 +13,7 @@ test("union types", () => {
   expect(serializeGrammar(grammar).trimEnd()).toEqual(
     String.raw`
 root ::= Person
-Person ::= "{"   ws   "\"age\":"   ws   (  string | number  )   "}"
+Person ::= "{"   ws   "\"age\":"   ws   (  stringlist | numberlist  )   "}"
 Personlist ::= "[]" | "["   ws   Person   (","   ws   Person)*   "]"
 string ::= "\""   ([^"]*)   "\""
 boolean ::= "true" | "false"
