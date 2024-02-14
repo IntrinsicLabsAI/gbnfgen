@@ -1,37 +1,40 @@
-import { Project, ts, InterfaceDeclaration, EnumDeclaration } from "ts-morph";
-import {
-  Grammar,
-  GrammarElement,
-  GrammarRule,
-  RuleReference,
-  group,
-  literal,
-  reference,
-  sequence,
-} from "./grammar.js";
+import { EnumDeclaration, InterfaceDeclaration, Project, ts } from "ts-morph";
+import { alternatives, Grammar, GrammarElement, GrammarRule, group, literal, reference, sequence, } from "./grammar.js";
 
 import {
-  toElementId,
-  toListElementId,
-  WS_REF,
   getDefaultGrammar,
   GrammarRegister,
   registerToGrammar,
+  toElementId,
+  toListElementId,
+  WS_REF,
 } from "./util.js";
 
 // Turn interface properties into Grammar References
 export function toGrammar(iface: Interface): Grammar {
+
+  function inferReferenceRule(propType: PropertyType) {
+    if (propType.type === "simple") {
+      return reference(propType.name);
+    }
+
+    if (propType.type === "array") {
+      return reference(toListElementId(propType.reference));
+    }
+
+    throw new Error(`Expected a simple or array type, received ${propType}`);
+  }
+
   function propertyRules(prop: InterfaceProperty): Array<GrammarRule> {
     const { name, type } = prop;
-    let typeRef: RuleReference;
+    let typeRef: GrammarRule;
 
-    // TODO: Throw exception error if grammar type not found ?
-    if (typeof type === "string") {
-      typeRef = reference(type);
-    } else if (type.isArray) {
-      typeRef = reference(toListElementId(type.reference));
+    if (type.type === "union") {
+      typeRef = alternatives(
+        ...type.refs.map(propType => inferReferenceRule(propType))
+      );
     } else {
-      typeRef = reference(toElementId(type.reference));
+      typeRef = inferReferenceRule(type);
     }
 
     return [WS_REF, literal(`"${name}":`), WS_REF, typeRef];
@@ -75,7 +78,10 @@ export function toGrammar(iface: Interface): Grammar {
 }
 
 // Parameterized list of things
-export type PropertyType = string | { reference: string; isArray: boolean };
+export type PropertyType =
+  | { type: "simple", name: string }
+  | { type: "array", reference: string }
+  | { type: "union", refs: PropertyType[] };
 
 export interface InterfaceProperty {
   name: string;
@@ -109,6 +115,34 @@ function handleEnum(enumNode: EnumDeclaration): GrammarElement {
   return { identifier: enumNode.getName(), alternatives: choices };
 }
 
+/**
+ * Infer {@link PropertyType} from a declared property name or set of property names.
+ */
+function inferPropType(
+  register: Map<string, Array<GrammarRule>>,
+  propType: string,
+  declaredTypes: Set<string>,
+  declaredArrayTypes: Map<string, string>,
+  propName: string
+): PropertyType {
+  if (register.has(propType)) {
+    return { type: "simple", name: propType };
+  } else if (propType === "string[]" || propType === "Array<string>") {
+    return { type: "simple", name: "stringlist" };
+  } else if (propType === "number[]" || propType === "Array<number>") {
+    return { type: "simple", name: "numberlist" };
+  } else if (declaredTypes.has(propType)) {
+    return { type: "simple", name: propType };
+  } else if (declaredArrayTypes.has(propType)) {
+    const baseType = declaredArrayTypes.get(propType)!;
+    return { type: "array", reference: baseType };
+  }
+
+  throw new Error(
+    `Failed validating parameter ${propName}: unsupported type ${propType}`
+  );
+}
+
 function handleInterface(
   iface: InterfaceDeclaration,
   declaredTypes: Set<string>,
@@ -118,6 +152,7 @@ function handleInterface(
   const declaredArrayTypes: Map<string, string> = new Map();
   for (const declType of declaredTypes) {
     declaredArrayTypes.set(`${declType}[]`, declType);
+    declaredArrayTypes.set(`Array<${declType}>`, declType);
   }
 
   if (iface.getTypeParameters().length > 0) {
@@ -137,24 +172,18 @@ function handleInterface(
     const propName = child.getName();
     const propType = child.getType().getText();
 
-    // Validate one of the accepted types
-    let propTypeValidated: PropertyType;
-    if (register.has(propType)) {
-      propTypeValidated = propType;
-    } else if (propType === "string[]" || propType === "Array<string>") {
-      propTypeValidated = "stringlist";
-    } else if (propType === "number[]" || propType === "Array<number>") {
-      propTypeValidated = "numberlist";
-    } else if (declaredTypes.has(propType)) {
-      propTypeValidated = { reference: propType, isArray: false };
-    } else if (declaredArrayTypes.has(propType)) {
-      const baseType = declaredArrayTypes.get(propType)!;
-      propTypeValidated = { reference: baseType, isArray: true };
-    } else {
-      throw new Error(
-        `Failed validating parameter ${propName}: unsupported type ${propType}`
-      );
-    }
+    const unionTypes = (child.getType().isUnion() && !child.getType().isEnum() && !child.getType().isBoolean())
+      ? child.getType().getUnionTypes().map(typ => typ.getText(child))
+      : [];
+
+    // Properties can either be simple singular types, or union types
+    let propTypeValidated: PropertyType = unionTypes.length === 0
+      ? inferPropType(register, propType, declaredTypes, declaredArrayTypes, propName)
+      : {
+        type: "union",
+        refs: unionTypes.map(typ => inferPropType(register, typ, declaredTypes, declaredArrayTypes, propName))
+      };
+
     props.push({
       name: propName,
       type: propTypeValidated,
@@ -169,7 +198,6 @@ function handleInterface(
 
 /**
  * Async variant of main compilation function, targeting {@link Grammar} type from raw TypeScript interface source code.
- * @param source
  * @returns
  */
 export async function compile(

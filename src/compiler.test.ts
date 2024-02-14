@@ -2,6 +2,27 @@ import { expect, test } from "vitest";
 import { compile, compileSync } from "./compiler.js";
 import { serializeGrammar } from "./grammar.js";
 
+test("union types", () => {
+  const grammar = compileSync(`
+  interface Person {
+    age: number | string;
+  }
+  `, "Person"
+  );
+
+  expect(serializeGrammar(grammar).trimEnd()).toEqual(
+    String.raw`
+root ::= Person
+Person ::= "{"   ws   "\"age\":"   ws   (  string | number  )   "}"
+Personlist ::= "[]" | "["   ws   Person   (","   ws   Person)*   "]"
+string ::= "\""   ([^"]*)   "\""
+boolean ::= "true" | "false"
+ws ::= [ \t\n]*
+number ::= [0-9]+   "."?   [0-9]*
+stringlist ::= "["   ws   "]" | "["   ws   string   (","   ws   string)*   ws   "]"
+numberlist ::= "["   ws   "]" | "["   ws   string   (","   ws   number)*   ws   "]"`.trim())
+});
+
 test("Single interface generation", () => {
   const postalAddressGrammar = compileSync(
     `interface PostalAddress {
