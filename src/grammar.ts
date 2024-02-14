@@ -9,6 +9,7 @@ export interface GrammarElement {
 
 export type GrammarRule =
   | RuleSequence
+  | RuleAlternatives
   | RuleGroup
   | RuleLiteral
   | RuleReference
@@ -16,6 +17,11 @@ export type GrammarRule =
 
 export interface RuleSequence {
   type: "sequence";
+  rules: Array<GrammarRule>;
+}
+
+export interface RuleAlternatives {
+  type: "alt";
   rules: Array<GrammarRule>;
 }
 
@@ -44,6 +50,10 @@ export function isSequence(rule: GrammarRule): rule is RuleSequence {
   return rule.type === "sequence";
 }
 
+export function isAlternatives(rule: GrammarRule): rule is RuleAlternatives {
+  return rule.type === "alt";
+}
+
 export function isGroup(rule: GrammarRule): rule is RuleGroup {
   return rule.type === "group";
 }
@@ -65,6 +75,8 @@ function serializeRule(rule: GrammarRule): string {
     return serializeSequence(rule);
   } else if (isGroup(rule)) {
     return serializeGroup(rule);
+  } else if (isAlternatives(rule)) {
+    return serializeAlternatives(rule)
   } else if (isLiteral(rule)) {
     return serializeLiteralRule(rule);
   } else if (isReference(rule)) {
@@ -87,6 +99,11 @@ function serializeGroup(rule: RuleGroup): string {
     plus: "+",
   }[rule.multiplicity];
   return `(${serializeSequence(rule.rules)})${multiplicity}`;
+}
+
+function serializeAlternatives(alt: RuleAlternatives): string {
+  const alternatives = alt.rules.map(rule => serializeRule(rule));
+  return "(  " + alternatives.join(" | ") + "  )";
 }
 
 function serializeLiteralRule(rule: RuleLiteral): string {
@@ -161,6 +178,13 @@ export function reference(value: string): RuleReference {
     type: "reference",
     referee: value,
   };
+}
+
+export function alternatives(...values: Array<GrammarRule>): RuleAlternatives {
+  return {
+    type: "alt",
+    rules: values,
+  }
 }
 
 export function group(
