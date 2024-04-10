@@ -18,7 +18,7 @@ Personlist ::= "[]" | "["   ws   Person   (","   ws   Person)*   "]"
 string ::= "\""   ((  [^"\x7F\x00-\x1F] | "\\"   (  ["\\/bfnrt] | "u"   [0-9a-fA-F]   [0-9a-fA-F]   [0-9a-fA-F]   [0-9a-fA-F]  )  ))*   "\""
 boolean ::= "true" | "false"
 ws ::= [ \t\n]*
-number ::= [0-9]+   "."?   [0-9]*
+number ::= ("-")?   [0-9]+   "."?   [0-9]*
 stringlist ::= "["   ws   "]" | "["   ws   string   (","   ws   string)*   ws   "]"
 numberlist ::= "["   ws   "]" | "["   ws   string   (","   ws   number)*   ws   "]"`.trim())
 });
@@ -43,7 +43,7 @@ PostalAddresslist ::= "[]" | "["   ws   PostalAddress   (","   ws   PostalAddres
 string ::= "\""   ((  [^"\x7F\x00-\x1F] | "\\"   (  ["\\/bfnrt] | "u"   [0-9a-fA-F]   [0-9a-fA-F]   [0-9a-fA-F]   [0-9a-fA-F]  )  ))*   "\""
 boolean ::= "true" | "false"
 ws ::= [ \t\n]*
-number ::= [0-9]+   "."?   [0-9]*
+number ::= ("-")?   [0-9]+   "."?   [0-9]*
 stringlist ::= "["   ws   "]" | "["   ws   string   (","   ws   string)*   ws   "]"
 numberlist ::= "["   ws   "]" | "["   ws   string   (","   ws   number)*   ws   "]"`.trim()
   );
@@ -72,7 +72,7 @@ AddressType ::= "\"business\"" | "\"home\""
 string ::= "\""   ((  [^"\x7F\x00-\x1F] | "\\"   (  ["\\/bfnrt] | "u"   [0-9a-fA-F]   [0-9a-fA-F]   [0-9a-fA-F]   [0-9a-fA-F]  )  ))*   "\""
 boolean ::= "true" | "false"
 ws ::= [ \t\n]*
-number ::= [0-9]+   "."?   [0-9]*
+number ::= ("-")?   [0-9]+   "."?   [0-9]*
 stringlist ::= "["   ws   "]" | "["   ws   string   (","   ws   string)*   ws   "]"
 numberlist ::= "["   ws   "]" | "["   ws   string   (","   ws   number)*   ws   "]"
 `.trim()
@@ -107,7 +107,7 @@ JobCandidatelist ::= "[]" | "["   ws   JobCandidate   (","   ws   JobCandidate)*
 string ::= "\""   ((  [^"\x7F\x00-\x1F] | "\\"   (  ["\\/bfnrt] | "u"   [0-9a-fA-F]   [0-9a-fA-F]   [0-9a-fA-F]   [0-9a-fA-F]  )  ))*   "\""
 boolean ::= "true" | "false"
 ws ::= [ \t\n]*
-number ::= [0-9]+   "."?   [0-9]*
+number ::= ("-")?   [0-9]+   "."?   [0-9]*
 stringlist ::= "["   ws   "]" | "["   ws   string   (","   ws   string)*   ws   "]"
 numberlist ::= "["   ws   "]" | "["   ws   string   (","   ws   number)*   ws   "]"`);
 });
@@ -162,7 +162,7 @@ ProductCategory ::= "\"Electronics\"" | "\"Clothing\"" | "\"Food\""
 string ::= "\""   ((  [^"\x7F\x00-\x1F] | "\\"   (  ["\\/bfnrt] | "u"   [0-9a-fA-F]   [0-9a-fA-F]   [0-9a-fA-F]   [0-9a-fA-F]  )  ))*   "\""
 boolean ::= "true" | "false"
 ws ::= [ \t\n]*
-number ::= [0-9]+   "."?   [0-9]*
+number ::= ("-")?   [0-9]+   "."?   [0-9]*
 stringlist ::= "["   ws   "]" | "["   ws   string   (","   ws   string)*   ws   "]"
 numberlist ::= "["   ws   "]" | "["   ws   string   (","   ws   number)*   ws   "]"
 `.trim()
@@ -243,7 +243,7 @@ CarAndOwnerlist ::= "[]" | "["   ws   CarAndOwner   (","   ws   CarAndOwner)*   
 string ::= "\""   ((  [^"\x7F\x00-\x1F] | "\\"   (  ["\\/bfnrt] | "u"   [0-9a-fA-F]   [0-9a-fA-F]   [0-9a-fA-F]   [0-9a-fA-F]  )  ))*   "\""
 boolean ::= "true" | "false"
 ws ::= [ \t\n]*
-number ::= [0-9]+   "."?   [0-9]*
+number ::= ("-")?   [0-9]+   "."?   [0-9]*
 stringlist ::= "["   ws   "]" | "["   ws   string   (","   ws   string)*   ws   "]"
 numberlist ::= "["   ws   "]" | "["   ws   string   (","   ws   number)*   ws   "]"`.trim()
   );
@@ -389,7 +389,7 @@ CarAndOwnerlist ::= "[]" | "["   ws   CarAndOwner   (","   ws   CarAndOwner)*   
 string ::= "\""   ((  [^"\x7F\x00-\x1F] | "\\"   (  ["\\/bfnrt] | "u"   [0-9a-fA-F]   [0-9a-fA-F]   [0-9a-fA-F]   [0-9a-fA-F]  )  ))*   "\""
 boolean ::= "true" | "false"
 ws ::= [ \t\n]*
-number ::= [0-9]+   "."?   [0-9]*
+number ::= ("-")?   [0-9]+   "."?   [0-9]*
 stringlist ::= "["   ws   "]" | "["   ws   string   (","   ws   string)*   ws   "]"
 numberlist ::= "["   ws   "]" | "["   ws   string   (","   ws   number)*   ws   "]"`.trim()
   );

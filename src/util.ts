@@ -51,6 +51,7 @@ const NUMBER_ELEM: GrammarElement = {
   identifier: "number",
   alternatives: [
     sequence(
+      group(sequence(literal(`-`)), "optional"),
       charPattern(/[0-9]+/g),
       charPattern(/"."?/g),
       charPattern(/[0-9]*/g)
