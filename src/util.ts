@@ -31,7 +31,11 @@ const STRING_ELEM: GrammarElement = {
               charPattern(/["\\/bfnrt]/g), // WS escape sequences
               sequence( // Unicode escape sequences
                 literal(`u`),
-                charPattern(/[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]/g)))))),
+                sequence(
+                  charPattern(/[0-9a-fA-F]/g),
+                  charPattern(/[0-9a-fA-F]/g),
+                  charPattern(/[0-9a-fA-F]/g),
+                  charPattern(/[0-9a-fA-F]/g))))))),
         "star"),
       literal(`"`))
   ],
