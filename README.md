@@ -34,7 +34,7 @@ const grammar = compile(
       Sad = "sad",
       Grateful = "grateful",
       Excited = "excited", 
-      Angry = "angry, 
+      Angry = "angry", 
       Peaceful = "peaceful"
     }
     
